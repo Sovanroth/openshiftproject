@@ -22,7 +22,7 @@ pipeline {
 
         stage('Build Image') {
             steps {
-                sh "docker build -t ${env.registryUser}/spring-demo-app:${env.imageTag} ."
+                sh "docker build -t ${env.registryUser}/openshift-demo-app:${env.imageTag} ."
             }
         }
 
@@ -31,7 +31,7 @@ pipeline {
                 withCredentials([usernamePassword(credentialsId: 'docker-hub-auth', passwordVariable: 'PASS', usernameVariable: 'USER')]) {
                     sh """
                         docker login -u $USER -p $PASS
-                        docker push $USER/spring-demo-app:${env.imageTag}
+                        docker push $USER/openshift-demo-app:${env.imageTag}
                     """
                 }
             }
