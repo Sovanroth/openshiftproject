@@ -1,16 +1,16 @@
 pipeline {
     agent any
 
-    tools {
-        maven 'maven-latest'
-    }
-
     environment {
-        IMAGE_NAME = "your-dockerhub-username/spring-app"
-        IMAGE_TAG = "latest"
+        IMAGE_NAME = "eobard/spring-demo-app"
+        IMAGE_TAG = "${BUILD_NUMBER}"
         HELM_RELEASE = "spring-app"
         HELM_CHART_PATH = "./pipeline"
-        NAMESPACE = "your-namespace"
+        NAMESPACE = "micro-service"
+    }
+
+    tools {
+        maven 'maven-latest'
     }
 
     stages {
@@ -20,27 +20,32 @@ pipeline {
             }
         }
 
-        stage('Build & Push Docker Image') {
+        stage('Build Docker Image') {
             steps {
-                script {
-                    docker.withRegistry('https://index.docker.io/v1/', 'docker-hub-auth') {
-                        def app = docker.build("${IMAGE_NAME}:${IMAGE_TAG}")
-                        app.push()
-                    }
+                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'docker-hub-auth', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
+                    sh """
+                        echo "$PASS" | docker login -u "$USER" --password-stdin
+                        docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                    """
                 }
             }
         }
 
         stage('Login to OpenShift') {
-            environment {
-                OC_TOKEN = credentials('oc-auth')
-                OC_API = credentials('oc-link')
-            }
             steps {
-                sh """
-                  oc login $OC_API --token=$OC_TOKEN --insecure-skip-tls-verify
-                  oc project $NAMESPACE
-                """
+                withCredentials([string(credentialsId: 'oc-auth', variable: 'OC_TOKEN'),
+                                 string(credentialsId: 'oc-link', variable: 'OC_API')]) {
+                    sh """
+                      oc login $OC_API --token=$OC_TOKEN --insecure-skip-tls-verify
+                      oc project $NAMESPACE
+                    """
+                }
             }
         }
 
