@@ -2,9 +2,9 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "eobard/spring-demo-app"
+        IMAGE_NAME = "eobard/openshift-demo-app"
         IMAGE_TAG = "${BUILD_NUMBER}"
-        HELM_RELEASE = "spring-app"
+        HELM_RELEASE = "openshift-demo-app"
         HELM_CHART_PATH = "./pipeline"
         NAMESPACE = "micro-service"
     }
