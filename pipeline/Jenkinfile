@@ -1,7 +1,8 @@
 pipeline {
+    agent any
 
-    agent {
-        label 'maven-latest'
+    tools {
+        maven 'maven-latest'  // Use your Maven installation named "maven-latest"
     }
 
     environment {
@@ -15,7 +16,8 @@ pipeline {
     stages {
         stage('Build JAR') {
             steps {
-                sh './mvnw clean package -DskipTests'
+                // Use mvn from the Maven tool installation
+                sh 'mvn clean package -DskipTests -Dmaven.repo.local=$WORKSPACE/.m2/repository'
             }
         }
 
