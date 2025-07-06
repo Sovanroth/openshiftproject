@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     tools {
-        maven 'maven-latest'  // Use your Maven installation named "maven-latest"
+        maven 'maven-latest'
     }
 
     environment {
@@ -16,7 +16,6 @@ pipeline {
     stages {
         stage('Build JAR') {
             steps {
-                // Use mvn from the Maven tool installation
                 sh 'mvn clean package -DskipTests -Dmaven.repo.local=$WORKSPACE/.m2/repository'
             }
         }
@@ -27,8 +26,8 @@ pipeline {
             }
             steps {
                 script {
+                    def app = docker.build("${IMAGE_NAME}:${IMAGE_TAG}")
                     docker.withRegistry('https://index.docker.io/v1/', 'docker-hub-auth') {
-                        def app = docker.build("${IMAGE_NAME}:${IMAGE_TAG}")
                         app.push()
                     }
                 }
