@@ -1,0 +1,57 @@
+pipeline {
+    agent any
+
+    environment {
+        IMAGE_NAME = "your-dockerhub-username/spring-app"
+        IMAGE_TAG = "latest"
+        HELM_RELEASE = "spring-app"
+        HELM_CHART_PATH = "./pipeline"
+        NAMESPACE = "your-namespace"
+    }
+
+    stages {
+        stage('Build JAR') {
+            steps {
+                sh './mvnw clean package -DskipTests'
+            }
+        }
+
+        stage('Build & Push Docker Image') {
+            environment {
+                DOCKER_CREDS = credentials('docker-hub-auth')
+            }
+            steps {
+                script {
+                    docker.withRegistry('https://index.docker.io/v1/', 'docker-hub-auth') {
+                        def app = docker.build("${IMAGE_NAME}:${IMAGE_TAG}")
+                        app.push()
+                    }
+                }
+            }
+        }
+
+        stage('Login to OpenShift') {
+            environment {
+                OC_TOKEN = credentials('oc-auth')
+                OC_API = credentials('oc-link')
+            }
+            steps {
+                sh """
+                  oc login $OC_API --token=$OC_TOKEN --insecure-skip-tls-verify
+                  oc project $NAMESPACE
+                """
+            }
+        }
+
+        stage('Deploy with Helm') {
+            steps {
+                sh """
+                  helm upgrade --install ${HELM_RELEASE} ${HELM_CHART_PATH} \
+                    --namespace ${NAMESPACE} \
+                    --set image.repository=${IMAGE_NAME} \
+                    --set image.tag=${IMAGE_TAG}
+                """
+            }
+        }
+    }
+}
