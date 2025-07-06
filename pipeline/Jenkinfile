@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "eobard/openshift-demo-app"
-        IMAGE_TAG = "latest"
+        imageTag = "${BUILD_NUMBER}"
+        registryUser = "eobard"
         HELM_RELEASE = "spring-app"
         HELM_CHART_PATH = "./pipeline"
         NAMESPACE = "micro-service"
@@ -20,19 +20,19 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Build Image') {
             steps {
-                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+                sh "docker build -t ${env.registryUser}/spring-demo-app:${env.imageTag} ."
             }
         }
 
-        stage('Push Docker Image') {
+        stage('Push to Registry') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'docker-hub-auth', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
-                    sh '''
-                        echo "$PASS" | docker login -u "$USER" --password-stdin
-                        docker push eobard/openshift-demo-app:latest
-                    '''
+                withCredentials([usernamePassword(credentialsId: 'docker-hub-auth', passwordVariable: 'PASS', usernameVariable: 'USER')]) {
+                    sh """
+                        docker login -u $USER -p $PASS
+                        docker push $USER/spring-demo-app:${env.imageTag}
+                    """
                 }
             }
         }
