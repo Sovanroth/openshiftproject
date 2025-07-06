@@ -1,5 +1,8 @@
 pipeline {
-    agent any
+
+    agent {
+        label 'maven-latest'
+    }
 
     environment {
         IMAGE_NAME = "your-dockerhub-username/spring-app"
