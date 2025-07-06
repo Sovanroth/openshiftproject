@@ -2,13 +2,15 @@ pipeline {
     agent any
 
     environment {
+        IMAGE_NAME = "eobard/openshift-demo-app"
+        IMAGE_TAG = "latest"
         HELM_RELEASE = "spring-app"
         HELM_CHART_PATH = "./pipeline"
-        NAMESPACE = "your-namespace"
+        NAMESPACE = "micro-service"
     }
 
     tools {
-        maven 'maven-latest'  // Your configured Maven tool
+        maven 'maven-latest'
     }
 
     stages {
@@ -18,29 +20,42 @@ pipeline {
             }
         }
 
-        stage('Trigger OpenShift Build') {
+        stage('Build Docker Image') {
             steps {
-                withCredentials([string(credentialsId: 'oc-auth', variable: 'OC_TOKEN'),
-                                 string(credentialsId: 'oc-link', variable: 'OC_API')]) {
-                    sh """
-                        oc login $OC_API --token=$OC_TOKEN --insecure-skip-tls-verify
-                        oc project $NAMESPACE
-                        oc start-build spring-app-buildconfig --follow
-                    """
+                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'docker-hub-auth', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
+                    sh '''
+                        echo "$PASS" | docker login -u "$USER" --password-stdin
+                        docker push eobard/openshift-demo-app:latest
+                    '''
+                }
+            }
+        }
+
+        stage('Login to OpenShift') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'oc-auth', variable: 'OC_TOKEN'),
+                    string(credentialsId: 'oc-link', variable: 'OC_API')
+                ]) {
+                    sh '''
+                        oc login ${OC_API} --token=${OC_TOKEN} --insecure-skip-tls-verify
+                        oc project ${NAMESPACE}
+                    '''
                 }
             }
         }
 
         stage('Deploy with Helm') {
             steps {
-                withCredentials([string(credentialsId: 'oc-auth', variable: 'OC_TOKEN'),
-                                 string(credentialsId: 'oc-link', variable: 'OC_API')]) {
-                    sh """
-                        oc login $OC_API --token=$OC_TOKEN --insecure-skip-tls-verify
-                        oc project $NAMESPACE
-                        helm upgrade --install ${HELM_RELEASE} ${HELM_CHART_PATH} --namespace ${NAMESPACE}
-                    """
-                }
+                sh '''
+                    helm upgrade --install ${HELM_RELEASE} ${HELM_CHART_PATH} --namespace ${NAMESPACE}
+                '''
             }
         }
     }

@@ -1,13 +1,13 @@
 replicaCount: 1
 
 image:
-  repository: your-dockerhub-username/spring-app
+  repository: eobard/openshift-demo-app  # <- use your Docker Hub username/repo
   tag: latest
   pullPolicy: IfNotPresent
 
 service:
   type: ClusterIP
-  port: 1000
+  port: 8090  # <- should match exposed port in Dockerfile
 
 resources: {}
 
